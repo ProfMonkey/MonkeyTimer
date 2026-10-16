@@ -18,6 +18,8 @@ class MonkeyTimerApp:
         self.presentation_window: tk.Toplevel | None = None
         self.presentation_display: tk.Label | None = None
         self._presentation_escape_binding: str | None = None
+        self._drag_offset_x: int | None = None
+        self._drag_offset_y: int | None = None
         self._build_widgets()
         self._refresh_display()
 
@@ -79,6 +81,9 @@ class MonkeyTimerApp:
             text=self._formatted_remaining(),
         )
         display.pack(expand=True, fill="both", padx=20, pady=20)
+        display.bind("<Button-1>", self._start_presentation_drag)
+        display.bind("<B1-Motion>", self._drag_presentation)
+        display.bind("<ButtonRelease-1>", self._stop_presentation_drag)
 
         self.presentation_window = window
         self.presentation_display = display
@@ -112,6 +117,32 @@ class MonkeyTimerApp:
             # Do this only on entry, never periodically or with an input grab.
             window.focus_force()
 
+    def _start_presentation_drag(self, event: tk.Event) -> None:
+        """Remember where the pointer grabbed the visible countdown Label."""
+        window = self.presentation_window
+        if window is None or not window.winfo_exists():
+            return
+        self._drag_offset_x = event.x_root - window.winfo_x()
+        self._drag_offset_y = event.y_root - window.winfo_y()
+        window.focus_force()
+
+    def _drag_presentation(self, event: tk.Event) -> None:
+        window = self.presentation_window
+        if (
+            window is None
+            or not window.winfo_exists()
+            or self._drag_offset_x is None
+            or self._drag_offset_y is None
+        ):
+            return
+        x = event.x_root - self._drag_offset_x
+        y = event.y_root - self._drag_offset_y
+        window.geometry(f"+{x}+{y}")
+
+    def _stop_presentation_drag(self, _event: tk.Event) -> None:
+        self._drag_offset_x = None
+        self._drag_offset_y = None
+
     @staticmethod
     def _enable_presentation_transparency(window: tk.Toplevel) -> None:
         """Make only the black presentation background transparent on Windows."""
@@ -124,6 +155,8 @@ class MonkeyTimerApp:
             pass
 
     def close_presentation_mode(self) -> None:
+        self._drag_offset_x = None
+        self._drag_offset_y = None
         if self._presentation_escape_binding is not None:
             self.root.unbind("<Escape>", self._presentation_escape_binding)
             self._presentation_escape_binding = None
