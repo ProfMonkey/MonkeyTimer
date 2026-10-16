@@ -17,6 +17,7 @@ class MonkeyTimerApp:
         self.root.resizable(False, False)
         self.presentation_window: tk.Toplevel | None = None
         self.presentation_display: tk.Label | None = None
+        self._presentation_escape_binding: str | None = None
         self._build_widgets()
         self._refresh_display()
 
@@ -55,6 +56,9 @@ class MonkeyTimerApp:
         if self.presentation_window is not None and self.presentation_window.winfo_exists():
             self.presentation_window.deiconify()
             self.presentation_window.lift()
+            self.presentation_window.after_idle(
+                self._activate_presentation, self.presentation_window
+            )
             return
 
         window = tk.Toplevel(self.root)
@@ -65,6 +69,7 @@ class MonkeyTimerApp:
         window.configure(background="black")
         window.protocol("WM_DELETE_WINDOW", self.close_presentation_mode)
         window.bind("<Escape>", lambda _event: self.close_presentation_mode())
+        window.bind("<Map>", self._presentation_mapped)
 
         display = tk.Label(
             window,
@@ -77,11 +82,35 @@ class MonkeyTimerApp:
 
         self.presentation_window = window
         self.presentation_display = display
+        self._presentation_escape_binding = self.root.bind(
+            "<Escape>", lambda _event: self.close_presentation_mode(), add="+"
+        )
         window.update_idletasks()
         self._enable_presentation_transparency(window)
         window.deiconify()
         window.attributes("-topmost", True)
         window.lift()
+        window.after_idle(self._activate_presentation, window)
+
+    def _presentation_mapped(self, event: tk.Event) -> None:
+        # Child widgets also generate Map events; only handle the Toplevel.
+        if event.widget is self.presentation_window:
+            event.widget.after_idle(self._restore_presentation_topmost, event.widget)
+
+    def _restore_presentation_topmost(self, window: tk.Toplevel) -> None:
+        if window is not self.presentation_window or not window.winfo_exists():
+            return
+        # Reapply after native mapping, including restoration of a hidden window.
+        window.attributes("-topmost", False)
+        window.attributes("-topmost", True)
+        window.lift()
+
+    def _activate_presentation(self, window: tk.Toplevel) -> None:
+        self._restore_presentation_topmost(window)
+        if window is self.presentation_window and window.winfo_exists():
+            # Borderless windows need an explicit initial keyboard focus request.
+            # Do this only on entry, never periodically or with an input grab.
+            window.focus_force()
 
     @staticmethod
     def _enable_presentation_transparency(window: tk.Toplevel) -> None:
@@ -95,10 +124,16 @@ class MonkeyTimerApp:
             pass
 
     def close_presentation_mode(self) -> None:
+        if self._presentation_escape_binding is not None:
+            self.root.unbind("<Escape>", self._presentation_escape_binding)
+            self._presentation_escape_binding = None
         if self.presentation_window is not None and self.presentation_window.winfo_exists():
             self.presentation_window.destroy()
         self.presentation_window = None
         self.presentation_display = None
+        self.root.deiconify()
+        self.root.lift()
+        self.root.focus_set()
 
     def start(self) -> None:
         try:
