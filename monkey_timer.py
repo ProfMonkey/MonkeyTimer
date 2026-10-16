@@ -61,6 +61,7 @@ class MonkeyTimerApp:
         window.title("MonkeyTimer 演讲模式")
         window.geometry("600x260+120+120")
         window.minsize(600, 260)
+        window.overrideredirect(True)
         window.configure(background="black")
         window.protocol("WM_DELETE_WINDOW", self.close_presentation_mode)
         window.bind("<Escape>", lambda _event: self.close_presentation_mode())
