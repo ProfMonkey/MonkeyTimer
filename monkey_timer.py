@@ -80,6 +80,7 @@ class MonkeyTimerApp:
         window.update_idletasks()
         self._enable_presentation_transparency(window)
         window.deiconify()
+        window.attributes("-topmost", True)
         window.lift()
 
     @staticmethod
