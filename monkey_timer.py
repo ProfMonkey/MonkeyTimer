@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import tkinter as tk
 from tkinter import ttk
 
@@ -76,8 +77,20 @@ class MonkeyTimerApp:
         self.presentation_window = window
         self.presentation_display = display
         window.update_idletasks()
+        self._enable_presentation_transparency(window)
         window.deiconify()
         window.lift()
+
+    @staticmethod
+    def _enable_presentation_transparency(window: tk.Toplevel) -> None:
+        """Make only the black presentation background transparent on Windows."""
+        if sys.platform != "win32":
+            return
+        try:
+            window.attributes("-transparentcolor", "black")
+        except tk.TclError:
+            # Keep the proven black-background presentation window as a fallback.
+            pass
 
     def close_presentation_mode(self) -> None:
         if self.presentation_window is not None and self.presentation_window.winfo_exists():
