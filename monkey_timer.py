@@ -13,7 +13,7 @@ class MonkeyTimerApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.timer = CountdownTimer()
-        self.root.title("MonkeyTimer V0.1")
+        self.root.title("MonkeyTimer V0.2")
         self.root.resizable(False, False)
         self.presentation_window: tk.Toplevel | None = None
         self.presentation_display: tk.Label | None = None
